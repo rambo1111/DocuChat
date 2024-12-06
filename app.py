@@ -13,7 +13,7 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Gemini API Configuration
-genai.configure(api_key="AIzaSyBwPwFyxDFtUvSgGjUK4tV3bXZ9-3yc-9c")  # Replace with your actual API key
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 # Global chat session
