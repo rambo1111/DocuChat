@@ -75,7 +75,7 @@ def upload_pdf():
         images = []
         
         for i, page in enumerate(doc):
-            pix = page.get_pixmap(dpi=400)
+            pix = page.get_pixmap(dpi=180)
             image_path = os.path.join(output_folder, f"page_{i + 1}.png")
             pix.save(image_path)
             
