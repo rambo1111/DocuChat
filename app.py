@@ -69,7 +69,7 @@ def cleanup_all_data():
                 metric='cosine',
                 spec=ServerlessSpec(
                     cloud='aws',
-                    region='us-west-1'
+                    region='us-east-1'
                 )
             )
             print(f"Created new Pinecone index: {INDEX_NAME}")
