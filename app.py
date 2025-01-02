@@ -18,7 +18,7 @@ app = Flask(__name__)
 socketio = SocketIO(app)
 
 # MongoDB setup
-MONGO_URI = "mongodb+srv://rambo:Vibhaw%401234@cluster0.btkqo.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+MONGO_URI = os.environ.get("MONGO_URI")
 client = MongoClient(MONGO_URI)
 db = client['pdf_chat_db']
 pdf_collection = db['pdf_files']
@@ -26,12 +26,12 @@ image_collection = db['pdf_images']
 chunk_collection = db['text_chunks']
 
 # Gemini setup
-GEMINI_API_KEY = "AIzaSyBWy_pZ_MPsPYdkLOChD0OvkW69UmeVerY"
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 # Pinecone setup
-PINECONE_API_KEY = "pcsk_55Ks4b_LuUp7j3XpmBxEPG7SeHYKWNGXSQMGBTs7Q648uFnHLC9ToB1owaQwXTYuEnmDkS"
+PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
 pc = Pinecone(api_key=PINECONE_API_KEY)
 index = pc.Index("test")
 INDEX_NAME = "test"
