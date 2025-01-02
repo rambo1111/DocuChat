@@ -56,11 +56,11 @@ def cleanup_all_data():
         pc = Pinecone(api_key=PINECONE_API_KEY)
         
         try:
-            # Try to get existing index
-            index = pc.Index(INDEX_NAME)
-            # Delete all vectors
-            index.delete(delete_all=True)
-            print("Pinecone index cleaned")
+            if pc.Index.exists(INDEX_NAME): 
+                index = pc.Index(INDEX_NAME)
+                # Delete all vectors
+                index.delete(delete_all=True)
+                print("Pinecone index cleaned")
         except Exception as e:
             # If index doesn't exist, create new one
             pc.create_index(
