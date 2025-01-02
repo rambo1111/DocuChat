@@ -4,3 +4,7 @@ google-generativeai
 Pillow
 PyMuPDF
 werkzeug
+flask-socketio
+pymongo
+sentence-transformers
+langchain
