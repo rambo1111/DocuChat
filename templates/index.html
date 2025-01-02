@@ -1,73 +1,329 @@
+
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Chat Assistant</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link href="static/styles.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <title>DocuChat</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <link rel="icon" type="image/svg+xml" href="static/favicon.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <style>
+        body {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f0f2f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #1a1a1a;
+            margin-bottom: 20px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        .header img {
+            width: 50px;
+            height: 50px;
+        }
+        #chat-box {
+            height: 500px;
+            overflow-y: auto;
+            border: 1px solid #e1e4e8;
+            padding: 20px;
+            margin: 15px 0;
+            background: white;
+            border-radius: 8px;
+        }
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin: 15px 0;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        input[type="file"] {
+            padding: 12px;
+            border: 1px dashed #e1e4e8;
+            border-radius: 6px;
+            background: #f8f9fa;
+        }
+        button {
+            padding: 12px 24px;
+            background: #0366d6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #0256b4;
+        }
+        .status {
+            margin: 15px 0;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        .success { 
+            background: #dcffe4;
+            color: #0a5921;
+            border: 1px solid #98e5ab;
+        }
+        .error { 
+            background: #ffe6e6;
+            color: #cc0000;
+            border: 1px solid #ffb3b3;
+        }
+        .message {
+            margin: 12px 0;
+            padding: 12px;
+            border-radius: 6px;
+            max-width: 85%;
+        }
+        .user-message {
+            background: #e3f2fd;
+            margin-left: auto;
+            color: #0d47a1;
+        }
+        .bot-message {
+            background: #f8f9fa;
+            border-left: 4px solid #0366d6;
+        }
+        .bot-message pre {
+            background-color: #f6f8fa;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .bot-message code {
+            background-color: #f6f8fa;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 85%;
+        }
+        .bot-message table {
+            border-collapse: collapse;
+            margin: 15px 0;
+            width: 100%;
+        }
+        .bot-message th, .bot-message td {
+            border: 1px solid #e1e4e8;
+            padding: 8px 12px;
+        }
+        .bot-message th {
+            background-color: #f6f8fa;
+            font-weight: 600;
+        }
+        .bot-message p {
+            margin: 10px 0;
+            line-height: 1.5;
+        }
+        .bot-message ul, .bot-message ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .bot-message blockquote {
+            border-left: 4px solid #e1e4e8;
+            margin: 10px 0;
+            padding-left: 15px;
+            color: #6a737d;
+        }
+        .bot-message img {
+            max-width: 100%;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        #upload-progress {
+            margin-top: 10px;
+            height: 4px;
+            background: #e1e4e8;
+            border-radius: 2px;
+            display: none;
+        }
+        #progress-bar {
+            height: 100%;
+            background: #0366d6;
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 h-screen flex flex-col">
-    <!-- Header Section -->
-    <header class="bg-blue-500 text-white py-4 shadow-md">
-        <div class="container mx-auto px-4 flex items-center justify-center">
-            <img src="static/favicon.svg" alt="DocuChat Logo" class="w-12 h-12 mr-2">
-            <h1 class="text-3xl font-bold">DocuChat</h1>
+<body>
+    <marquee>Made By- Vibhaw Kureel</marquee>
+    <div class="container">
+        <div class="header">
+            <img src="{{ url_for('static', filename='favicon.svg') }}" alt="Logo">
+            <h1>DocuChat - PDF Chat Application</h1>
         </div>
-    </header>
-    
-    <!-- Loader Section -->
-    <div id="loader" class="loader fixed inset-0 bg-white flex justify-center items-center z-50">
-        <div class="spinner-border animate-spin border-t-4 border-blue-500 w-12 h-12 rounded-full"></div>
-    </div>
-
-    <div class="container mx-auto px-4 py-8 flex-grow flex flex-col">
-        <div class="bg-white shadow-md rounded-lg overflow-hidden flex flex-col h-full">
-            <!-- PDF Upload Section -->
-            <div class="p-4 border-b bg-gray-50">
-                <div class="flex items-center space-x-4">
-                    <input type="file" id="pdfUpload" accept=".pdf" class="hidden" />
-                    <button id="uploadBtn" class="upload-btn">
-                        <i class="fas fa-upload mr-2"></i>Upload PDF
-                    </button>
-                    <span id="fileName" class="text-gray-600">No file selected</span>
-                </div>
-                <div id="pdfSummary" class="mt-2 text-sm text-gray-700"></div>
+        
+        <div class="upload-section">
+            <h2>Upload PDFs</h2>
+            <div class="input-group">
+                <input type="file" id="pdf-files" multiple accept=".pdf">
+                <button onclick="uploadFiles()">Upload & Process</button>
             </div>
-
-            <!-- Chat Interface -->
-            <div id="chatContainer" class="chat-container">
-                <!-- Messages will be dynamically added here -->
+            <div id="upload-progress">
+                <div id="progress-bar"></div>
             </div>
+            <div id="upload-status" class="status"></div>
+        </div>
 
-            <!-- Message Input -->
-            <div class="p-4 border-t bg-gray-50">
-                <div class="flex items-center">
-                    <input 
-                        type="text" 
-                        id="messageInput" 
-                        placeholder="Ask a question about the PDF..." 
-                        class="message-input"
-                    >
-                    <button 
-                        id="sendBtn" 
-                        class="send-btn"
-                    >
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </div>
+        <div class="chat-section">
+            <h2>Chat with PDFs</h2>
+            <div id="chat-box"></div>
+            <div class="input-group">
+                <input type="text" id="message-input" placeholder="Ask a question about your PDFs...">
+                <button onclick="sendMessage()">Send</button>
             </div>
         </div>
     </div>
 
-    <script src="static/scripts.js"></script>
+    <script>
+        const socket = io();
+        
+        marked.setOptions({
+            renderer: new marked.Renderer(),
+            highlight: function(code, lang) {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, { language }).value;
+            },
+            langPrefix: 'hljs language-',
+            breaks: true,
+            sanitize: false,
+            smartLists: true,
+            smartypants: true
+        });
 
-    <footer class="bottom-center">
-        <span>Vibhaw Kureel</span>
-    </footer>
-    
+        function uploadFiles() {
+            const files = document.getElementById('pdf-files').files;
+            if (files.length === 0) {
+                showStatus('Please select PDF files first', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            for (let file of files) {
+                formData.append('files[]', file);
+            }
+            
+            showStatus('Uploading and processing files...', '');
+            showProgressBar();
+            
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideProgressBar();
+                showStatus(
+                    data.success ? 'Files processed successfully!' : 'Error: ' + data.error,
+                    data.success ? 'success' : 'error'
+                );
+            })
+            .catch(error => {
+                hideProgressBar();
+                showStatus('Error: ' + error, 'error');
+            });
+        }
+
+        function showProgressBar() {
+            const progress = document.getElementById('upload-progress');
+            const bar = document.getElementById('progress-bar');
+            progress.style.display = 'block';
+            bar.style.width = '0%';
+            simulateProgress();
+        }
+
+        function hideProgressBar() {
+            document.getElementById('upload-progress').style.display = 'none';
+        }
+
+        function simulateProgress() {
+            let width = 0;
+            const bar = document.getElementById('progress-bar');
+            const interval = setInterval(() => {
+                if (width >= 90) {
+                    clearInterval(interval);
+                } else {
+                    width += Math.random() * 10;
+                    bar.style.width = Math.min(width, 90) + '%';
+                }
+            }, 500);
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('upload-status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (message) {
+                appendMessage('You: ' + message, 'user-message');
+                socket.emit('chat_message', { query: message });
+                input.value = '';
+            }
+        }
+
+        socket.on('chat_response', function(data) {
+            const message = data.error ? 'Error: ' + data.error : data.response;
+            appendMessage('Bot: ' + message, data.error ? 'error' : 'bot-message');
+        });
+
+        function appendMessage(message, className) {
+            const chatBox = document.getElementById('chat-box');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + className;
+            
+            if (className === 'bot-message') {
+                messageDiv.innerHTML = 'Bot: ' + marked.parse(message.replace(/^Bot: /, ''));
+            } else {
+                messageDiv.textContent = message;
+            }
+            
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            
+            messageDiv.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightBlock(block);
+            });
+        }
+
+        document.getElementById('message-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Initialize highlight.js
+        hljs.highlightAll();
+    </script>
+    <marquee>Made By- Vibhaw Kureel</marquee>
 </body>
 </html>
