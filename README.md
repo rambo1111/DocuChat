@@ -47,10 +47,6 @@ _Your AI-Powered Document Chat Assistant_
 
 ---
 
-## **📸 Preview**
-![Preview Screenshot](https://via.placeholder.com/1000x500.png?text=DocuChat+Preview)
-
----
 
 ## **⚡ Quick Start**
 1. **Clone this repository:**
