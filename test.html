@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for a cleaner look */
+        #chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        #chat-container::-webkit-scrollbar-track {
+            background: #1f2937; /* bg-gray-800 */
+        }
+        #chat-container::-webkit-scrollbar-thumb {
+            background: #4b5563; /* bg-gray-600 */
+            border-radius: 3px;
+        }
+        #chat-container::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* bg-gray-500 */
+        }
+        .prose-styles h1, .prose-styles h2, .prose-styles h3 {
+            color: white;
+        }
+        .prose-styles p, .prose-styles ul, .prose-styles ol, .prose-styles li, .prose-styles blockquote {
+            color: #d1d5db; /* text-gray-300 */
+        }
+        .prose-styles strong {
+            color: white;
+        }
+        .prose-styles code {
+            background-color: #374151; /* bg-gray-700 */
+            color: #f3f4f6; /* text-gray-100 */
+            padding: 0.2em 0.4em;
+            border-radius: 0.25rem;
+        }
+        .prose-styles pre {
+            background-color: #111827; /* bg-gray-900 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+        }
+        .prose-styles pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col h-screen">
+
+    <!-- API Key Modal -->
+    <div id="api-key-modal" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md mx-4">
+            <h2 class="text-2xl font-bold mb-4 text-center">Enter Gemini API Key</h2>
+            <p class="text-gray-400 mb-6 text-center text-sm">You can get your API key from Google AI Studio.</p>
+            <input type="password" id="api-key-input" class="w-full bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Your API Key">
+            <button id="save-api-key-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md mt-6 transition-colors duration-300">Start Chatting</button>
+        </div>
+    </div>
+
+    <!-- File Prompt Modal -->
+    <div id="file-prompt-modal" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md mx-4">
+            <h2 class="text-2xl font-bold mb-2 text-center">File Selected</h2>
+            <p id="file-prompt-filename" class="text-gray-400 mb-6 text-center text-sm"></p>
+            <textarea id="file-prompt-input" class="w-full bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="What should I do with this file? (e.g., 'Summarize this document')" rows="3"></textarea>
+            <div class="flex gap-4 mt-6">
+                 <button id="cancel-file-prompt-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-300">Cancel</button>
+                <button id="send-file-prompt-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-300">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Chat Interface -->
+    <header class="bg-gray-800/50 backdrop-blur-sm p-4 border-b border-gray-700 flex items-center justify-between">
+        <h1 class="text-xl font-bold">ChatBot</h1>
+        <button id="change-api-key-btn" class="text-sm text-gray-400 hover:text-white transition-colors">Change API Key</button>
+    </header>
+
+    <main id="chat-container" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+        <!-- Chat messages will be appended here -->
+         <div class="flex items-start gap-3">
+            <div class="bg-blue-600 p-2 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4 max-w-4xl prose-styles">
+                <p>Hello! I'm Chat Bot. You can ask me questions or upload a file to get started.</p>
+                <p>Enter a file path or click the paperclip icon to upload a file, or just type a message. Type 'exit' or 'quit' to end.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Loading Indicator -->
+    <div id="loading-indicator" class="hidden flex items-center gap-2 px-6 pb-2">
+        <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-400"></div>
+        <span class="text-sm text-gray-400">Bot is thinking...</span>
+    </div>
+    
+    <!-- Input Form -->
+    <footer class="p-4 md:p-6 border-t border-gray-700 bg-gray-900">
+        <form id="chat-form" class="flex items-center gap-4">
+            <input type="file" id="file-input" class="hidden">
+            <button type="button" id="upload-btn" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <input type="text" id="message-input" class="flex-1 bg-gray-800 border border-gray-700 rounded-full px-5 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type your message...">
+            <button type="submit" id="send-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold p-3 rounded-full transition-colors duration-300 disabled:bg-gray-600 disabled:cursor-not-allowed">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </form>
+    </footer>
+
+    <script>
+        // DOM Elements
+        const apiKeyModal = document.getElementById('api-key-modal');
+        const apiKeyInput = document.getElementById('api-key-input');
+        const saveApiKeyBtn = document.getElementById('save-api-key-btn');
+        const changeApiKeyBtn = document.getElementById('change-api-key-btn');
+        
+        const filePromptModal = document.getElementById('file-prompt-modal');
+        const filePromptFilename = document.getElementById('file-prompt-filename');
+        const filePromptInput = document.getElementById('file-prompt-input');
+        const sendFilePromptBtn = document.getElementById('send-file-prompt-btn');
+        const cancelFilePromptBtn = document.getElementById('cancel-file-prompt-btn');
+
+        const chatContainer = document.getElementById('chat-container');
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const uploadBtn = document.getElementById('upload-btn');
+        const fileInput = document.getElementById('file-input');
+        const loadingIndicator = document.getElementById('loading-indicator');
+
+        // App State
+        let apiKey = '';
+        let chatHistory = [];
+        let selectedFile = null;
+
+        // --- Initialization ---
+        
+        // Check for saved API key on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedKey = localStorage.getItem('gemini_api_key');
+            if (savedKey) {
+                apiKey = savedKey;
+                apiKeyModal.classList.add('hidden');
+            }
+        });
+
+        // --- Event Listeners ---
+
+        saveApiKeyBtn.addEventListener('click', () => {
+            const key = apiKeyInput.value.trim();
+            if (key) {
+                apiKey = key;
+                localStorage.setItem('gemini_api_key', key);
+                apiKeyModal.classList.add('hidden');
+                apiKeyInput.value = '';
+            }
+        });
+        
+        changeApiKeyBtn.addEventListener('click', () => {
+            apiKeyModal.classList.remove('hidden');
+        });
+
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleSendMessage();
+        });
+
+        uploadBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                filePromptFilename.textContent = `File: ${file.name}`;
+                filePromptModal.classList.remove('hidden');
+                filePromptInput.focus();
+            }
+        });
+
+        sendFilePromptBtn.addEventListener('click', () => {
+            handleSendFile();
+            filePromptModal.classList.add('hidden');
+            filePromptInput.value = '';
+            fileInput.value = ''; // Reset file input
+        });
+
+        cancelFilePromptBtn.addEventListener('click', () => {
+            filePromptModal.classList.add('hidden');
+            filePromptInput.value = '';
+            fileInput.value = ''; // Reset file input
+            selectedFile = null;
+        });
+
+        // --- Core Functions ---
+
+        async function handleSendMessage() {
+            const userMessage = messageInput.value.trim();
+            if (!userMessage) return;
+
+            if (userMessage.toLowerCase() === 'exit' || userMessage.toLowerCase() === 'quit') {
+                addMessageToChat('Goodbye!', 'model');
+                messageInput.value = '';
+                messageInput.disabled = true;
+                sendBtn.disabled = true;
+                return;
+            }
+
+            addMessageToChat(userMessage, 'user');
+            messageInput.value = '';
+            toggleLoading(true);
+
+            try {
+                const modelResponse = await callGeminiAPI([{ text: userMessage }]);
+                addMessageToChat(modelResponse, 'model');
+            } catch (error) {
+                console.error('API Error:', error);
+                addMessageToChat(`Error: ${error.message}`, 'model', true);
+            } finally {
+                toggleLoading(false);
+            }
+        }
+
+        async function handleSendFile() {
+            const userPrompt = filePromptInput.value.trim();
+            if (!userPrompt || !selectedFile) return;
+
+            const displayMessage = `
+                <p class="font-bold">Analyzing File:</p>
+                <p class="text-sm bg-gray-700/50 px-2 py-1 rounded-md mt-1">${selectedFile.name}</p>
+                <p class="mt-2">${userPrompt}</p>
+            `;
+            addMessageToChat(displayMessage, 'user');
+            toggleLoading(true);
+
+            try {
+                const base64Data = await fileToBase64(selectedFile);
+                const filePart = {
+                    inlineData: {
+                        mimeType: selectedFile.type,
+                        data: base64Data
+                    }
+                };
+                const textPart = { text: userPrompt };
+
+                const modelResponse = await callGeminiAPI([textPart, filePart]);
+                addMessageToChat(modelResponse, 'model');
+
+            } catch (error) {
+                console.error('File Processing or API Error:', error);
+                addMessageToChat(`Error: ${error.message}`, 'model', true);
+            } finally {
+                toggleLoading(false);
+                selectedFile = null;
+            }
+        }
+
+        async function callGeminiAPI(parts) {
+            if (!apiKey) {
+                throw new Error('API Key is not set. Please set it first.');
+            }
+            
+            // Add the new message to the history for the API call
+            chatHistory.push({
+                role: 'user',
+                parts: parts
+            });
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: chatHistory,
+                // Optional: Add safety settings or generation config if needed
+                // safetySettings: [...],
+                // generationConfig: {...}
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.json();
+                console.error("API Error Response:", errorBody);
+                const errorMessage = errorBody.error?.message || 'An unknown API error occurred.';
+                 // Remove the failed user message from history
+                chatHistory.pop();
+                throw new Error(errorMessage);
+            }
+
+            const data = await response.json();
+            
+            if (!data.candidates || data.candidates.length === 0) {
+                 // Remove the failed user message from history
+                chatHistory.pop();
+                throw new Error('No response from model. The prompt may have been blocked.');
+            }
+
+            const modelResponseText = data.candidates[0].content.parts.map(part => part.text).join('');
+
+            // Add the model's response to the history
+            chatHistory.push({
+                role: 'model',
+                parts: [{ text: modelResponseText }]
+            });
+
+            return modelResponseText;
+        }
+
+
+        // --- UI Helper Functions ---
+
+        function addMessageToChat(text, role, isError = false) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.className = `flex items-start gap-3 ${role === 'user' ? 'justify-end' : ''}`;
+
+            let content;
+            if (role === 'user') {
+                content = `
+                    <div class="bg-blue-600 rounded-lg p-4 max-w-4xl order-1">
+                        <div class="prose-styles">${text}</div>
+                    </div>
+                    <div class="bg-gray-700 p-2 rounded-full order-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </div>
+                `;
+            } else { // model
+                content = `
+                    <div class="bg-blue-600 p-2 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                    </div>
+                    <div class="${isError ? 'bg-red-500/20 border border-red-500/50' : 'bg-gray-800'} rounded-lg p-4 max-w-4xl">
+                        <div class="prose-styles">${isError ? text : marked.parse(text)}</div>
+                    </div>
+                `;
+            }
+
+            messageWrapper.innerHTML = content;
+            chatContainer.appendChild(messageWrapper);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function toggleLoading(isLoading) {
+            if (isLoading) {
+                loadingIndicator.classList.remove('hidden');
+                sendBtn.disabled = true;
+                messageInput.disabled = true;
+            } else {
+                loadingIndicator.classList.add('hidden');
+                sendBtn.disabled = false;
+                messageInput.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        // --- Utility Functions ---
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    // Result is "data:mime/type;base64,the-real-base64-string"
+                    // We only need the part after the comma
+                    resolve(reader.result.split(',')[1]);
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+    </script>
+    <!-- Include Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</body>
+</html>
